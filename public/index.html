@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab Monitoring Dashboard - K.S.RCE</title>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    * { 
+      box-sizing: border-box; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      margin: 0; 
+      padding: 0; 
+    }
+    body { 
+      background-color: #0b111e; 
+      padding: 20px; 
+      color: #333; 
+    }
+    
+    /* Neon Border Frame */
+    .dashboard-frame {
+      border: 2px solid #00f0ff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+      background-color: #0f317b;
+    }
+
+    /* Header Section */
+    .header { 
+      text-align: center; 
+      margin-bottom: 25px; 
+      padding: 10px;
+    }
+    .header img {
+      height: 90px;
+      margin-bottom: 10px;
+      filter: drop-shadow(0px 0px 8px rgba(0, 240, 255, 0.6));
+    }
+    .header h1 { 
+      font-size: 26px; 
+      color: #ffffff;
+      text-transform: uppercase; 
+      letter-spacing: 2px; 
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+      margin-bottom: 5px;
+    }
+    .header p { 
+      color: #00f0ff; 
+      font-size: 20px; 
+      font-weight: bold;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+    }
+
+    /* Metric Cards */
+    .metrics-container { 
+      display: flex; 
+      gap: 15px; 
+      margin-bottom: 25px; 
+      flex-wrap: wrap; 
+    }
+    .card { 
+      flex: 1; 
+      min-width: 180px; 
+      background: #0f172a; 
+      padding: 20px 15px; 
+      border-radius: 10px; 
+      text-align: center; 
+      border: 2px solid #00f0ff;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    }
+    .card.active { border-color: #00ff88; box-shadow: 0 0 10px rgba(0, 255, 136, 0.2); }
+    .card.total { border-color: #0088ff; box-shadow: 0 0 10px rgba(0, 136, 255, 0.2); }
+    .card.year { border-color: #ff9900; box-shadow: 0 0 10px rgba(255, 153, 0, 0.2); }
+    .card.section { border-color: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); }
+    
+    .card h3 { 
+      font-size: 13px; 
+      color: #94a3b8; 
+      text-transform: uppercase; 
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .card p { 
+      font-size: 32px; 
+      font-weight: bold; 
+      color: #ffffff;
+    }
+    .card.active p { color: #00ff88; }
+    .card.total p { color: #0088ff; }
+    .card.year p { color: #ff9900; }
+    .card.section p { color: #a855f7; }
+
+    /* Controls Bar */
+    .controls-bar { 
+      background: #0f172a; 
+      padding: 18px; 
+      border-radius: 10px; 
+      display: flex; 
+      flex-wrap: wrap; 
+      justify-content: space-between; 
+      align-items: flex-end; 
+      gap: 15px; 
+      margin-bottom: 25px; 
+      border: 1px solid #1e293b;
+    }
+    .filters { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 6px; }
+    .filter-group label { font-size: 13px; font-weight: 600; color: #ffffff; }
+    .filter-group input, .filter-group select { 
+      padding: 8px 12px; 
+      background: #090d16;
+      border: 1px solid #00f0ff; 
+      border-radius: 6px; 
+      font-size: 13px; 
+      color: #ffffff;
+      outline: none; 
+    }
+
+    .search-box { display: flex; align-items: flex-end; }
+    .btn-search { 
+      background-color: #0284c7; 
+      color: white; 
+      border: 1px solid #38bdf8; 
+      padding: 8px 16px; 
+      border-radius: 6px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      height: 35px; 
+    }
+    .btn-search:hover { background-color: #0369a1; }
+
+    .btn-export { 
+      background-color: #14532d; 
+      color: #4ade80; 
+      border: 1px solid #22c55e; 
+      padding: 10px 18px; 
+      border-radius: 6px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-export:hover { background-color: #166534; }
+
+    /* Table Design */
+    .table-container { 
+      background: #ffffff; 
+      border-radius: 10px; 
+      overflow: hidden; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; color: #1e293b; }
+    th { 
+      background-color: #e2e8f0; 
+      color: #0f172a; 
+      padding: 12px; 
+      font-weight: 700; 
+      border-bottom: 2px solid #cbd5e1; 
+      white-space: nowrap; 
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; vertical-align: middle; }
+    tr:nth-child(even) { background-color: #f8fafc; }
+    tr:hover { background-color: #f1f5f9; }
+
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+    .badge.active { background-color: #dcfce7; color: #15803d; }
+    .badge.completed { background-color: #f1f5f9; color: #475569; }
+
+    /* Delete Button Design */
+    .btn-delete {
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .btn-delete:hover {
+      background-color: #dc2626;
+    }
+
+    .footer-status {
+      margin-top: 15px;
+      text-align: center;
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-frame">
+    <!-- HEADER WITH LOGO -->
+    <div class="header">
+      <img src="images/logo.png" alt="KSRCE Logo" onerror="this.style.display='none'">
+      <h1>K.S.R. COLLEGE OF ENGINEERING (AUTONOMOUS)</h1>
+      <p>LAB MONITORING DASHBOARD</p>
+    </div>
+
+    <!-- METRIC CARDS -->
+    <div class="metrics-container">
+      <div class="card active">
+        <h3>ACTIVE LAB SESSIONS</h3>
+        <p id="activeCount">0</p>
+      </div>
+      <div class="card total">
+        <h3>TOTAL LOGINS</h3>
+        <p id="totalCount">0</p>
+      </div>
+      <div class="card year">
+        <h3>SELECTED YEAR LOGS</h3>
+        <p id="yearCount">0</p>
+      </div>
+      <div class="card section">
+        <h3>SELECTED SECTION LOGS</h3>
+        <p id="sectionCount">0</p>
+      </div>
+    </div>
+
+    <!-- FILTER & SEARCH CONTROL BAR -->
+    <div class="controls-bar">
+      <div class="filters">
+        <div class="filter-group">
+          <label>Date</label>
+          <input type="date" id="filterDate" onchange="fetchLogs()">
+        </div>
+        <div class="filter-group">
+          <label>Department</label>
+          <select id="filterDept" onchange="fetchLogs()">
+            <option value="ALL">All Depts</option>
+            <option value="CSE">CSE</option>
+            <option value="ECE">ECE</option>
+            <option value="EEE">EEE</option>
+            <option value="MECH">MECH</option>
+            <option value="CIVIL">CIVIL</option>
+            <option value="IT">IT</option>
+            <option value="AI&DS">AI&DS</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Year</label>
+          <select id="filterYear" onchange="fetchLogs()">
+            <option value="ALL">All Years</option>
+            <option value="I">I Year</option>
+            <option value="II">II Year</option>
+            <option value="III">III Year</option>
+            <option value="IV">IV Year</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Section</label>
+          <select id="filterSection" onchange="fetchLogs()">
+            <option value="ALL">All Sections</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Search All Fields</label>
+          <input type="text" id="searchInput" placeholder="Search Reg No, Name, PC..." onkeyup="filterClientData()">
+        </div>
+        <div class="search-box">
+          <button class="btn-search" onclick="filterClientData()">Search</button>
+        </div>
+      </div>
+
+      <button class="btn-export" onclick="exportToExcel()">📊 EXPORT TO EXCEL</button>
+    </div>
+
+    <!-- DATA TABLE -->
+    <div class="table-container">
+      <table id="logsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>System No</th>
+            <th>Reg No / ID</th>
+            <th>Student Name</th>
+            <th>Dept</th>
+            <th>Year</th>
+            <th>Sec</th>
+            <th>Faculty In-Charge</th>
+            <th>Subject</th>
+            <th>Entry Time</th>
+            <th>Exit Time</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="footer-status" id="serverStatus">
+      Status: Ready. Connected to Admin Server...
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    let globalLogs = []; 
+
+    document.getElementById('filterDate').valueAsDate = new Date();
+
+    async function fetchLogs() {
+      const date = document.getElementById('filterDate').value;
+      const dept = document.getElementById('filterDept').value;
+      
+      try {
+        const response = await fetch(`/api/logs?date=${date}&dept=${dept}`);
+        globalLogs = await response.json();
+        filterClientData();
+      } catch (err) { 
+        console.error("Logs Fetch Error:", err); 
+      }
+    }
+
+    function filterClientData() {
+      const year = document.getElementById('filterYear').value;
+      const section = document.getElementById('filterSection').value;
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+      const filtered = globalLogs.filter(log => {
+        const logYear = log.year ? log.year.toString().trim().split(/\s+/)[0].toUpperCase() : '';
+        const logSection = log.section ? log.section.replace(/^SECTION\s+/i, '').toUpperCase() : '';
+        const matchYear = year === 'ALL' || logYear === year.toUpperCase();
+        const matchSection = section === 'ALL' || logSection === section.toUpperCase();
+        
+        const matchSearch = !query || Object.values(log).some(val => 
+          val && val.toString().toLowerCase().includes(query)
+        );
+
+        return matchYear && matchSection && matchSearch;
+      });
+
+      renderTable(filtered);
+    }
+
+    function renderTable(logs) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      
+      let activeCount = 0;
+      let yearCount = 0;
+      let sectionCount = 0;
+
+      const selectedYear = document.getElementById('filterYear').value;
+      const selectedSection = document.getElementById('filterSection').value;
+
+      if (logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; padding: 20px;">No matching session logs found.</td></tr>`;
+        document.getElementById('activeCount').innerText = 0;
+        document.getElementById('totalCount').innerText = 0;
+        document.getElementById('yearCount').innerText = 0;
+        document.getElementById('sectionCount').innerText = 0;
+        return;
+      }
+
+      logs.forEach((log, index) => {
+        if (log.status === 'ACTIVE') activeCount++;
+        const logYear = log.year ? log.year.toString().trim().split(/\s+/)[0].toUpperCase() : '';
+        const logSection = log.section ? log.section.replace(/^SECTION\s+/i, '').toUpperCase() : '';
+        if (selectedYear !== 'ALL' && logYear === selectedYear.toUpperCase()) yearCount++;
+        if (selectedSection !== 'ALL' && logSection === selectedSection.toUpperCase()) sectionCount++;
+
+        const entryTime = log.entry_time ? new Date(log.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+        const exitTime = log.exit_time ? new Date(log.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${log.log_date || (log.entry_time ? log.entry_time.split('T')[0] : '-')}</td>
+            <td><b>${log.system_number || '-'}</b></td>
+            <td>${log.user_id || log.reg_no || '-'}</td>
+            <td><b>${log.student_name || log.user_name || '-'}</b></td>
+            <td>${log.department || '-'}</td>
+            <td><b>${log.year || '-'}</b></td>
+            <td><b>${log.section || '-'}</b></td>
+            <td>${log.faculty_name || '-'}</td>
+            <td>${log.subject_name || '-'}</td>
+            <td>${entryTime}</td>
+            <td>${exitTime}</td>
+            <td>${log.total_duration || 'In Progress'}</td>
+            <td><span class="badge ${log.status === 'ACTIVE' ? 'active' : 'completed'}">${log.status}</span></td>
+            <td>
+              <button class="btn-delete" onclick="deleteLog('${log.id || log._id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('activeCount').innerText = activeCount;
+      document.getElementById('totalCount').innerText = logs.length;
+      document.getElementById('yearCount').innerText = selectedYear === 'ALL' ? logs.length : yearCount;
+      document.getElementById('sectionCount').innerText = selectedSection === 'ALL' ? logs.length : sectionCount;
+    }
+
+    // Delete Log Functionality
+    async function deleteLog(id) {
+      if(!id || id === 'undefined') {
+        alert("Log ID not found!");
+        return;
+      }
+      
+      if (confirm("Are you sure you want to delete this record?")) {
+        try {
+          const res = await fetch(`/api/logs/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+            fetchLogs(); // Refresh after deletion
+          } else {
+            alert("Failed to delete record.");
+          }
+        } catch (err) {
+          console.error("Delete Error:", err);
+        }
+      }
+    }
+
+    function exportToExcel() {
+      const date = document.getElementById('filterDate').value;
+      const dept = document.getElementById('filterDept').value;
+      const table = document.getElementById("logsTable");
+      const wb = XLSX.utils.table_to_book(table, { sheet: "Lab Attendance" });
+      XLSX.writeFile(wb, `KSRCE_Lab_Report_${dept}_${date}.xlsx`);
+    }
+
+    socket.on('NEW_ENTRY_EVENT', () => fetchLogs());
+    socket.on('STUDENT_EXIT_EVENT', () => fetchLogs());
+    fetchLogs();
+  </script>
+</body>
+</html>
