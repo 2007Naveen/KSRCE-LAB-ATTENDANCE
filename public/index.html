@@ -136,6 +136,18 @@
     }
     .btn-search:hover { background-color: #0369a1; }
 
+    .btn-sort {
+      background-color: #334155;
+      color: #ffffff;
+      border: 1px solid #64748b;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      height: 35px;
+    }
+    .btn-sort:hover { background-color: #475569; }
+
     .btn-export { 
       background-color: #14532d; 
       color: #4ade80; 
@@ -287,6 +299,18 @@
         <div class="search-box">
           <button class="btn-search" onclick="filterClientData()">Search</button>
         </div>
+        <div class="filter-group">
+          <label for="sortBy">Sort By</label>
+          <select id="sortBy" onchange="filterClientData()">
+            <option value="user_id">Register No</option>
+            <option value="student_name">Student Name</option>
+            <option value="system_number">System No</option>
+            <option value="entry_time">Entry Time</option>
+          </select>
+        </div>
+        <div class="search-box">
+          <button id="btnSortOrder" class="btn-sort" type="button" onclick="toggleSortOrder()">⬆️ ASC</button>
+        </div>
       </div>
 
       <button class="btn-export" onclick="exportToExcel()">📊 EXPORT TO EXCEL</button>
@@ -329,6 +353,7 @@
     const socket = io();
     let globalLogs = []; 
     let filteredLogs = [];
+    let currentSortOrder = 'ASC';
 
     document.getElementById('filterDate').valueAsDate = new Date();
 
@@ -363,8 +388,37 @@
         return matchYear && matchSection && matchSearch;
       });
 
-      filteredLogs = filtered;
+      const sortByField = document.getElementById('sortBy').value;
+      const direction = currentSortOrder === 'ASC' ? 1 : -1;
+
+      filteredLogs = filtered.sort((first, second) => {
+        const firstValue = first[sortByField] ?? '';
+        const secondValue = second[sortByField] ?? '';
+
+        if (sortByField === 'entry_time') {
+          const firstTimestamp = Date.parse(firstValue);
+          const secondTimestamp = Date.parse(secondValue);
+
+          if (!Number.isNaN(firstTimestamp) && !Number.isNaN(secondTimestamp)) {
+            return (firstTimestamp - secondTimestamp) * direction;
+          }
+        }
+
+        return String(firstValue).localeCompare(
+          String(secondValue),
+          undefined,
+          { numeric: true, sensitivity: 'base' }
+        ) * direction;
+      });
+
       renderTable(filteredLogs);
+    }
+
+    function toggleSortOrder() {
+      currentSortOrder = currentSortOrder === 'ASC' ? 'DESC' : 'ASC';
+      document.getElementById('btnSortOrder').textContent =
+        currentSortOrder === 'ASC' ? '⬆️ ASC' : '⬇️ DESC';
+      filterClientData();
     }
 
     function renderTable(logs) {
