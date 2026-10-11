@@ -24,11 +24,8 @@ app.use(express.static('public'));
 // PostgreSQL Connection Configuration
 // -------------------------------------------------------------
 const pool = new Pool({
-  user: process.env.PG_USER || 'postgres',
-  host: process.env.PG_HOST || 'localhost',
-  database: process.env.PG_DATABASE || 'lab_tracker_db',
-  password: process.env.PG_PASSWORD || 'Naveen@2007',
-  port: Number(process.env.PG_PORT) || 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
 // -------------------------------------------------------------
