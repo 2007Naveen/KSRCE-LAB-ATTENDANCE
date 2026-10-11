@@ -1670,11 +1670,9 @@ class LabApp(QWidget):
         except requests.exceptions.ConnectionError:
 
             self.show_message(
-                "Server Connection Error",
-                "Cannot connect to the Admin Server.\n\n"
-                f"Server: {SERVER_URL}\n\n"
-                "Please make sure the Node.js "
-                "backend server is running.",
+                "Connection Error",
+                "Cannot connect to the Lab Attendance Server.\n\n"
+                "Please check your Internet Connection or Local Network.",
                 QMessageBox.Critical
             )
 
@@ -1688,7 +1686,7 @@ class LabApp(QWidget):
             )
 
             self.lbl_status.setText(
-                "Status: Server connection failed."
+                "Status: Network connection failed."
             )
 
             return

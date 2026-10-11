@@ -163,13 +163,18 @@
     .btn-export:hover { background-color: #166534; }
 
     /* Table Design */
-    .table-container { 
+    .table-card,
+    .table-container,
+    .table-responsive {
+      width: 100%;
       background: #ffffff; 
       border-radius: 10px; 
-      overflow: hidden; 
+      overflow-x: auto !important;
+      display: block;
+      white-space: nowrap;
       box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; color: #1e293b; }
+    table { width: 100%; min-width: 1400px; border-collapse: collapse; white-space: nowrap; text-align: left; font-size: 13px; color: #1e293b; }
     th { 
       background-color: #e2e8f0; 
       color: #0f172a; 
