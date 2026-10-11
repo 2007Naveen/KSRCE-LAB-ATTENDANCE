@@ -39,11 +39,9 @@ from PyQt5.QtGui import (
 
 SERVER_URL = os.environ.get(
     "LAB_SERVER_URL",
-    "http://localhost:5000"
+    "https://ksrce-lab-attendance.onrender.com"
 )
 sio = socketio.Client(reconnection=True)
-
-
 # ============================================================
 # CUSTOM LINE EDIT
 # ============================================================
