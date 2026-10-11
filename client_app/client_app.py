@@ -1098,7 +1098,7 @@ class LabApp(QWidget):
 
         self.lbl_status = QLabel(
             f"Status: Ready. Connecting to Admin Server "
-            f"({SERVER_URL})..."
+            
         )
 
         self.lbl_status.setAlignment(
