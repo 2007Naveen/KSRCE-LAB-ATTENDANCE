@@ -111,7 +111,8 @@ app.get('/api/logs', async (req, res) => {
     const result = await pool.query(`
       SELECT session_id AS id, session_id, user_role, user_id, student_name,
         department, section, "YEAR" AS year, system_number, subject_name,
-        faculty_name, entry_time, exit_time, total_duration, status
+        faculty_name, lab_selection, lab_start_time, lab_end_time,
+        entry_time, exit_time, total_duration, status
       FROM session_logs
       WHERE ($1::date IS NULL OR entry_time::date = $1::date)
         AND ($2 = 'ALL' OR LOWER(department) = LOWER($2))

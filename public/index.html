@@ -326,6 +326,7 @@
   <script>
     const socket = io();
     let globalLogs = []; 
+    let filteredLogs = [];
 
     document.getElementById('filterDate').valueAsDate = new Date();
 
@@ -360,7 +361,8 @@
         return matchYear && matchSection && matchSearch;
       });
 
-      renderTable(filtered);
+      filteredLogs = filtered;
+      renderTable(filteredLogs);
     }
 
     function renderTable(logs) {
@@ -454,8 +456,29 @@
     function exportToExcel() {
       const date = document.getElementById('filterDate').value;
       const dept = document.getElementById('filterDept').value;
-      const table = document.getElementById("logsTable");
-      const wb = XLSX.utils.table_to_book(table, { sheet: "Lab Attendance" });
+      const excelData = filteredLogs.map((row, index) => ({
+        "S.No": index + 1,
+        "Session ID": row.session_id,
+        "Register No": row.user_id,
+        "Student Name": row.student_name,
+        "Department": row.department,
+        "Year": row.YEAR || row.year || row.year_study,
+        "Section": row.section,
+        "System No": row.system_number,
+        "Lab Name": row.lab_selection || row.lab_name || "N/A",
+        "Lab Slot Time": row.lab_start_time && row.lab_end_time
+          ? `${row.lab_start_time} to ${row.lab_end_time}`
+          : (row.lab_slot || "N/A"),
+        "Subject": row.subject_name,
+        "Faculty In-Charge": row.faculty_name,
+        "Entry Time": row.entry_time,
+        "Exit Time": row.exit_time || "ACTIVE",
+        "Total Duration": row.total_duration || "In Progress",
+        "Status": row.status
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, worksheet, "Lab Attendance");
       XLSX.writeFile(wb, `KSRCE_Lab_Report_${dept}_${date}.xlsx`);
     }
 
