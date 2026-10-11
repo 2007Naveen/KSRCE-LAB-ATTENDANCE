@@ -145,6 +145,28 @@ const PORT = Number(process.env.PORT) || 5000;
 async function startServer() {
   try {
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS session_logs (
+        session_id SERIAL PRIMARY KEY,
+        user_role VARCHAR(20),
+        user_id VARCHAR(100),
+        student_name VARCHAR(100),
+        department VARCHAR(50),
+        section VARCHAR(20),
+        system_number VARCHAR(50),
+        "YEAR" VARCHAR(20),
+        subject_name VARCHAR(100),
+        faculty_name VARCHAR(100),
+        lab_selection VARCHAR(100),
+        lab_start_time VARCHAR(20),
+        lab_end_time VARCHAR(20),
+        entry_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        exit_time TIMESTAMP,
+        total_duration VARCHAR(50),
+        status VARCHAR(20) DEFAULT 'ACTIVE'
+      )
+    `);
+
+    await pool.query(`
       ALTER TABLE session_logs
         ADD COLUMN IF NOT EXISTS student_name VARCHAR(100),
         ADD COLUMN IF NOT EXISTS faculty_name VARCHAR(100),
