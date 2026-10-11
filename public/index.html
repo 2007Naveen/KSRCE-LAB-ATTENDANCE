@@ -305,6 +305,8 @@
             <th>Dept</th>
             <th>Year</th>
             <th>Sec</th>
+            <th>Lab Name</th>
+            <th>Lab Slot Time</th>
             <th>Faculty In-Charge</th>
             <th>Subject</th>
             <th>Entry Time</th>
@@ -377,7 +379,7 @@
       const selectedSection = document.getElementById('filterSection').value;
 
       if (logs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; padding: 20px;">No matching session logs found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="17" style="text-align:center; padding: 20px;">No matching session logs found.</td></tr>`;
         document.getElementById('activeCount').innerText = 0;
         document.getElementById('totalCount').innerText = 0;
         document.getElementById('yearCount').innerText = 0;
@@ -405,6 +407,8 @@
             <td>${log.department || '-'}</td>
             <td><b>${log.year || '-'}</b></td>
             <td><b>${log.section || '-'}</b></td>
+            <td>${log.lab_selection || log.lab_name || '-'}</td>
+            <td>${log.lab_start_time && log.lab_end_time ? `${log.lab_start_time} to ${log.lab_end_time}` : (log.lab_slot || '-')}</td>
             <td>${log.faculty_name || '-'}</td>
             <td>${log.subject_name || '-'}</td>
             <td>${entryTime}</td>
