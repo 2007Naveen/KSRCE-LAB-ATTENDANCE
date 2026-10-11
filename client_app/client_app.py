@@ -1,6 +1,8 @@
 import sys
 import os
+import threading
 import requests
+import socketio
 
 from PyQt5.QtWidgets import (
     QApplication,
@@ -20,7 +22,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import (
     Qt,
     QTimer,
-    QDateTime
+    QDateTime,
+    QTime,
+    pyqtSignal
 )
 
 from PyQt5.QtGui import (
@@ -33,7 +37,11 @@ from PyQt5.QtGui import (
 # SERVER CONFIGURATION
 # ============================================================
 
-SERVER_URL = "http://192.168.137.1:5000"
+SERVER_URL = os.environ.get(
+    "LAB_SERVER_URL",
+    "http://localhost:5000"
+)
+sio = socketio.Client(reconnection=True)
 
 
 # ============================================================
@@ -74,6 +82,8 @@ class CustomLineEdit(QLineEdit):
 
 class LabApp(QWidget):
 
+    admin_exit_signal = pyqtSignal()
+
     def __init__(self):
 
         super().__init__()
@@ -92,6 +102,10 @@ class LabApp(QWidget):
         self.session_started = False
 
         self.exit_completed = False
+
+        self.admin_exit_signal.connect(
+            self.handle_admin_force_exit
+        )
 
         self.initUI()
 
@@ -909,31 +923,18 @@ class LabApp(QWidget):
         row_times = QHBoxLayout()
 
 
-        time_slots = [
+        time_slots = []
 
-            "09:00 AM",
-            "09:30 AM",
-            "10:00 AM",
-            "10:30 AM",
-            "11:00 AM",
-            "11:30 AM",
+        slot_time = QTime(9, 0)
+        final_slot_time = QTime(16, 30)
 
-            "12:00 PM",
-            "12:30 PM",
+        while slot_time <= final_slot_time:
 
-            "01:00 PM",
-            "01:30 PM",
+            time_slots.append(
+                slot_time.toString("hh:mm AP")
+            )
 
-            "02:00 PM",
-            "02:30 PM",
-
-            "03:00 PM",
-            "03:30 PM",
-
-            "04:00 PM",
-            "04:30 PM",
-            "05:00 PM"
-        ]
+            slot_time = slot_time.addSecs(5 * 60)
 
 
         self.combo_start = QComboBox()
@@ -1633,6 +1634,12 @@ class LabApp(QWidget):
                     res.get("session_id")
                 )
 
+                threading.Thread(
+                    target=self.listen_for_admin_exit,
+                    args=(self.session_id,),
+                    daemon=True
+                ).start()
+
                 self.lbl_status.setText(
                     "Status: Lab session started successfully."
                 )
@@ -1641,10 +1648,9 @@ class LabApp(QWidget):
 
                 self.show_message(
                     "Entry Failed",
-                    res.get(
-                        "message",
-                        "Unable to start lab session."
-                    ),
+                    res.get("message")
+                    or res.get("error")
+                    or "Unable to start lab session.",
                     QMessageBox.Warning
                 )
 
@@ -1798,6 +1804,28 @@ Actual Entry Time   : {self.entry_time_str}
         self.timer.start(
             1000
         )
+
+
+    def listen_for_admin_exit(self, session_id):
+
+        if not session_id:
+            return
+
+        sio.on(
+            f"force_exit_{session_id}",
+            lambda data: self.admin_exit_signal.emit()
+        )
+
+        try:
+            sio.connect(SERVER_URL)
+        except Exception as error:
+            print("Socket connection error:", error)
+
+
+    def handle_admin_force_exit(self):
+
+        if self.session_started:
+            self.show_exit_summary(forced=True)
 
 
     # ========================================================
@@ -1968,7 +1996,7 @@ Actual Entry Time   : {self.entry_time_str}
     # EXIT SESSION
     # ========================================================
 
-    def show_exit_summary(self):
+    def show_exit_summary(self, forced=False):
 
         if not self.session_started:
 
@@ -1979,69 +2007,70 @@ Actual Entry Time   : {self.entry_time_str}
         # Confirmation
         # ----------------------------------------------------
 
-        box = QMessageBox(self)
+        if not forced:
+            box = QMessageBox(self)
 
-        box.setWindowTitle(
-            "Confirm Exit"
-        )
+            box.setWindowTitle(
+                "Confirm Exit"
+            )
 
-        box.setText(
-            "Are you sure you want to exit "
-            "the lab session?"
-        )
+            box.setText(
+                "Are you sure you want to exit "
+                "the lab session?"
+            )
 
-        box.setIcon(
-            QMessageBox.Question
-        )
+            box.setIcon(
+                QMessageBox.Question
+            )
 
-        box.setStandardButtons(
-            QMessageBox.Yes |
-            QMessageBox.No
-        )
+            box.setStandardButtons(
+                QMessageBox.Yes |
+                QMessageBox.No
+            )
 
-        box.setDefaultButton(
-            QMessageBox.No
-        )
+            box.setDefaultButton(
+                QMessageBox.No
+            )
 
-        box.setStyleSheet(
-            """
-            QMessageBox {
-                background-color: #ffffff;
-            }
+            box.setStyleSheet(
+                """
+                QMessageBox {
+                    background-color: #ffffff;
+                }
 
-            QMessageBox QLabel {
-                color: #111111;
-                background-color: #ffffff;
-                font-family: "Segoe UI";
-                font-size: 14px;
-                font-weight: bold;
-                padding: 10px;
-            }
+                QMessageBox QLabel {
+                    color: #111111;
+                    background-color: #ffffff;
+                    font-family: "Segoe UI";
+                    font-size: 14px;
+                    font-weight: bold;
+                    padding: 10px;
+                }
 
-            QMessageBox QPushButton {
-                background-color: #0078d4;
-                color: #ffffff;
-                border: none;
-                border-radius: 5px;
-                padding: 8px 25px;
-                min-width: 70px;
-                font-family: "Segoe UI";
-                font-size: 13px;
-                font-weight: bold;
-            }
+                QMessageBox QPushButton {
+                    background-color: #0078d4;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 8px 25px;
+                    min-width: 70px;
+                    font-family: "Segoe UI";
+                    font-size: 13px;
+                    font-weight: bold;
+                }
 
-            QMessageBox QPushButton:hover {
-                background-color: #005a9e;
-            }
-            """
-        )
+                QMessageBox QPushButton:hover {
+                    background-color: #005a9e;
+                }
+                """
+            )
 
-        reply = box.exec()
+            reply = box.exec()
 
 
-        if reply != QMessageBox.Yes:
+            if reply != QMessageBox.Yes:
 
-            return
+                return
 
 
         # ----------------------------------------------------
@@ -2154,17 +2183,18 @@ Actual Entry Time   : {self.entry_time_str}
         # SUMMARY
         # ====================================================
 
-        status_text = (
-
-            "Data saved to Department Server."
-
-            if exit_success
-
-            else
-
-            "Session completed locally. "
-            "Please verify server connection."
-        )
+        if forced:
+            status_text = (
+                "Session terminated by Admin. Data saved to Department Server."
+                if exit_success
+                else "Session terminated by Admin. Please verify server connection."
+            )
+        else:
+            status_text = (
+                "Data saved to Department Server."
+                if exit_success
+                else "Session completed locally. Please verify server connection."
+            )
 
 
         summary_text = f"""

@@ -188,6 +188,18 @@
     .btn-delete:hover {
       background-color: #dc2626;
     }
+    .btn-force-exit {
+      background-color: #b91c1c;
+      color: white;
+      border: none;
+      margin-right: 6px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .btn-force-exit:hover { background-color: #991b1b; }
 
     .footer-status {
       margin-top: 15px;
@@ -398,6 +410,7 @@
             <td>${log.total_duration || 'In Progress'}</td>
             <td><span class="badge ${log.status === 'ACTIVE' ? 'active' : 'completed'}">${log.status}</span></td>
             <td>
+              ${log.status === 'ACTIVE' ? `<button class="btn-force-exit" onclick="forceExitSession('${log.session_id || log.id}')">Force Exit</button>` : ''}
               <button class="btn-delete" onclick="deleteLog('${log.id || log._id}')">Delete</button>
             </td>
           </tr>
@@ -408,6 +421,13 @@
       document.getElementById('totalCount').innerText = logs.length;
       document.getElementById('yearCount').innerText = selectedYear === 'ALL' ? logs.length : yearCount;
       document.getElementById('sectionCount').innerText = selectedSection === 'ALL' ? logs.length : sectionCount;
+    }
+
+    function forceExitSession(sessionId) {
+      if (!sessionId || sessionId === 'undefined') return;
+      if (confirm('Are you sure you want to stop this student session?')) {
+        socket.emit('admin_force_exit', { session_id: sessionId });
+      }
     }
 
     // Delete Log Functionality

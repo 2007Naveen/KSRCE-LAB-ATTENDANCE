@@ -9,6 +9,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+io.on('connection', (socket) => {
+  socket.on('admin_force_exit', ({ session_id } = {}) => {
+    if (session_id === undefined || session_id === null) return;
+    io.emit(`force_exit_${session_id}`, { message: 'Terminated by Admin' });
+  });
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -20,7 +27,7 @@ const pool = new Pool({
   user: process.env.PG_USER || 'postgres',
   host: process.env.PG_HOST || 'localhost',
   database: process.env.PG_DATABASE || 'lab_tracker_db',
-  password: process.env.PG_PASSWORD,
+  password: process.env.PG_PASSWORD || 'Naveen@2007',
   port: Number(process.env.PG_PORT) || 5432,
 });
 
@@ -30,14 +37,15 @@ const pool = new Pool({
 app.post('/api/entry', async (req, res) => {
   const { 
     user_role, user_id, student_name, department, section, system_number,
-    year, subject_name, faculty_name, lab_start_time, lab_end_time
+    year, subject_name, faculty_name, lab_selection, lab_name,
+    lab_start_time, lab_end_time
   } = req.body;
 
   try {
     const query = `
       INSERT INTO session_logs 
-        (user_role, user_id, student_name, department, section, system_number, "YEAR", subject_name, faculty_name, lab_start_time, lab_end_time, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ACTIVE')
+        (user_role, user_id, student_name, department, section, system_number, "YEAR", subject_name, faculty_name, lab_selection, lab_start_time, lab_end_time, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'ACTIVE')
       RETURNING session_id, entry_time;
     `;
     
@@ -51,6 +59,7 @@ app.post('/api/entry', async (req, res) => {
       year || 'I Year', 
       subject_name || '',
       faculty_name || '',
+      lab_selection || lab_name || '',
       lab_start_time || '', 
       lab_end_time || ''
     ];
@@ -138,9 +147,12 @@ app.delete('/api/logs/:id', async (req, res) => {
 const PORT = Number(process.env.PORT) || 5000;
 async function startServer() {
   try {
-    await pool.query(
-      'ALTER TABLE session_logs ADD COLUMN IF NOT EXISTS student_name VARCHAR(100)'
-    );
+    await pool.query(`
+      ALTER TABLE session_logs
+        ADD COLUMN IF NOT EXISTS student_name VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS faculty_name VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS lab_selection VARCHAR(100)
+    `);
   } catch (err) {
     console.error('Database schema check failed:', err.message);
   }
