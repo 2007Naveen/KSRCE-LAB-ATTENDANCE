@@ -97,6 +97,8 @@ class LabApp(QWidget):
 
         self.entry_datetime = None
 
+        self.exit_unlock_datetime = None
+
         self.session_started = False
 
         self.exit_completed = False
@@ -922,6 +924,7 @@ class LabApp(QWidget):
 
 
         time_slots = []
+        slot_minutes = []
 
         slot_time = QTime(9, 0)
         final_slot_time = QTime(16, 30)
@@ -930,6 +933,10 @@ class LabApp(QWidget):
 
             time_slots.append(
                 slot_time.toString("hh:mm AP")
+            )
+
+            slot_minutes.append(
+                slot_time.hour() * 60 + slot_time.minute()
             )
 
             slot_time = slot_time.addSecs(5 * 60)
@@ -947,6 +954,18 @@ class LabApp(QWidget):
         self.combo_end.addItems(
             time_slots
         )
+
+        for index, minutes_after_midnight in enumerate(slot_minutes):
+
+            self.combo_start.setItemData(
+                index,
+                minutes_after_midnight
+            )
+
+            self.combo_end.setItemData(
+                index,
+                minutes_after_midnight
+            )
 
 
         lbl_slot = QLabel(
@@ -1785,6 +1804,16 @@ Actual Entry Time   : {self.entry_time_str}
 
         self.exit_completed = False
 
+        self.exit_unlock_datetime = (
+            self.get_exit_enable_datetime()
+        )
+
+        if self.exit_unlock_datetime is None:
+
+            self.exit_unlock_datetime = (
+                QDateTime.currentDateTime().addSecs(10 * 60)
+            )
+
         self.btn_exit.setEnabled(
             False
         )
@@ -1888,26 +1917,27 @@ Actual Entry Time   : {self.entry_time_str}
 
     def get_exit_enable_datetime(self):
 
-        end_time_text = (
-            self.combo_end.currentText().strip()
-        )
+        end_minutes = self.combo_end.currentData()
 
-        end_time = QDateTime.fromString(
-            end_time_text,
-            "hh:mm AP"
+        if not isinstance(end_minutes, int):
+
+            return None
+
+        now = QDateTime.currentDateTime()
+
+        end_time = QTime(
+            end_minutes // 60,
+            end_minutes % 60
         )
 
         if not end_time.isValid():
 
             return None
 
-        now = QDateTime.currentDateTime()
-
-        end_time.setDate(
-            now.date()
-        )
-
-        return end_time.addSecs(
+        return QDateTime(
+            now.date(),
+            end_time
+        ).addSecs(
             -10 * 60
         )
 
@@ -1918,7 +1948,7 @@ Actual Entry Time   : {self.entry_time_str}
 
             return
 
-        enable_time = self.get_exit_enable_datetime()
+        enable_time = self.exit_unlock_datetime
 
         if enable_time is None:
 
@@ -2022,7 +2052,7 @@ Actual Entry Time   : {self.entry_time_str}
             return
 
         if not forced:
-            enable_time = self.get_exit_enable_datetime()
+            enable_time = self.exit_unlock_datetime
 
             if (
                 enable_time is None
