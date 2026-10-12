@@ -1936,6 +1936,29 @@ Actual Entry Time   : {self.entry_time_str}
                 True
             )
 
+            self.btn_exit.setStyleSheet(
+                """
+                QPushButton {
+                    background-color: #168a45;
+                    color: white;
+                    font-family: 'Consolas';
+                    font-weight: bold;
+                    font-size: 18px;
+                    padding: 12px;
+                    border: none;
+                    border-radius: 6px;
+                }
+
+                QPushButton:hover {
+                    background-color: #116b36;
+                }
+
+                QPushButton:pressed {
+                    background-color: #0c5028;
+                }
+                """
+            )
+
             self.lbl_exit_countdown.setText(
                 "EXIT SESSION IS NOW AVAILABLE"
             )
@@ -1997,6 +2020,16 @@ Actual Entry Time   : {self.entry_time_str}
         if not self.session_started:
 
             return
+
+        if not forced:
+            enable_time = self.get_exit_enable_datetime()
+
+            if (
+                enable_time is None
+                or QDateTime.currentDateTime() < enable_time
+            ):
+                self.update_exit_countdown()
+                return
 
 
         # ----------------------------------------------------
